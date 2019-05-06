@@ -5,6 +5,7 @@ A Bash script that performs various matrix operations
 Operations supported:
 
 
+
 dims
 
 Calculates the dimensions of the matrix supplied either via stdin, or a filename parameter, and
@@ -17,6 +18,7 @@ input: matrix dims matrix1
 output:
 
 	2 4
+
 
 
 
@@ -38,6 +40,7 @@ output:
 		
 		4	8
 		
+
 
 
 mean
@@ -69,6 +72,7 @@ output:
 		0	0	0	0
 
 		0	0	0	-1
+
 
 
 multiply
