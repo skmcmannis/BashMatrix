@@ -1,0 +1,494 @@
+#!/bin/bash
+
+#Performs various operations on rectangular matrices of integers
+#Author: Shawn McMannis
+#Last mod date: 4/21/2019
+
+#Calculates the dimensions of a matrix, and displays them as "ROWS COLUMNS"
+dims()
+{
+	rows=0
+	col=0
+	bool=0
+
+	#Save input to a file named datafile$$ if coming in via stdin, or else set variable datafilepath to input file name
+	datafilepath="datafile$$"
+	if [ "$#" = "0" ]
+	then
+		cat > "$datafilepath"
+	elif [ "$#" = "1" ]
+	then
+		datafilepath=$1
+	fi
+
+	#Verify no more than one file parameter was passed
+	if [ $# -gt 1 ]
+	then
+		echo "Too many parameters specified" >&2
+		exit 1
+	fi
+
+	#Verify the input file exists
+	if [ ! -r $datafilepath ]
+	then
+		echo "File '$1' not found or file not readable" >&2
+		exit 1
+	fi
+
+	#Calculate the number of columns and rows
+	while read inputMatrix
+	do
+		if [ $bool -ne 1 ]
+		then
+			for i in $inputMatrix
+			do
+				col=$(expr $col + 1)
+			done
+			bool=$(expr $bool + 1)
+		fi
+
+		rows=$(expr $rows + 1)
+		
+	done < $datafilepath
+
+	echo "$rows $col"
+}
+
+
+#Transposes the supplied matrix and cats it to stdout
+transpose()
+{
+	column=0
+	counter=1
+	tempCol="tempcolfile$$"
+	tempRow="temprowfile$$"
+	transFile="transfile$$"
+
+	#Save input to a file named datafile$$ if coming in via stdin, or else set variable datafilepath to input file name
+	datafilepath="datafile$$"
+	if [ "$#" = "0" ]
+	then
+		cat > "$datafilepath"
+	elif [ "$#" = "1" ]
+	then
+		datafilepath=$1
+	fi
+
+	#Verify no more than one file parameter was passed
+	if [ $# -gt 1 ]
+	then
+		echo "Too many parameters specified" >&2
+		exit 1
+	fi
+
+	#Verify the input file exists
+	if [ ! -r $datafilepath ]
+	then
+		echo "File '$1' not found or file not readable" >&2
+		exit 1
+	fi
+
+	#Transpose the matrix
+	while read inputMatrix
+	do
+		#Count the number of columns in the matrix
+		for i in $inputMatrix
+		do
+			column=$(expr $column + 1)
+		done
+	
+		#Update column so it can be a comparison for counter
+		column=$(expr $column + 1)
+
+		while [ $counter -lt $column ]
+		do
+			#Cut the columns and save them to tempCol
+			cut -f $counter $datafilepath > $tempCol
+
+			#Transform the newlines to tabs and save the string to tempRow
+			cat $tempCol | tr '\n' '\t' >> $tempRow
+				
+			#Add a newline at the end of each line
+			echo >> $tempRow
+				
+			counter=$(expr $counter + 1)
+		done
+
+		#Reset the number of columns
+		column=0
+
+	done < $datafilepath
+
+	#Remove the trailing tab and save the new string to transFile
+	while read inputMatrix
+	do
+		temp=$inputMatrix
+		echo "$temp" >> $transFile
+	done < $tempRow
+
+	#Display the now transposed matrix from transFile
+	cat $transFile
+
+	#Clean up temp files
+	rm -f temprow*
+	rm -f tempcol*
+	rm -f transfile*
+}
+
+
+#Calculates the mean value of each column of the input matrix and outputs a row vector of the means
+mean()
+{
+	column=0
+	counter=1
+	count=0
+	sum=0
+	mean=0
+	greater=0
+	tempCol="tempcolfile$$"
+	tempRow="temprowfile$$"
+	tempMean="tempmeanfile$$"
+	tempTransform="temptransformfile$$"
+
+	#Save input to a file named datafile$$ if coming in via stdin, or else set variable datafilepath to input file name
+	datafilepath="datafile$$"
+	if [ "$#" = "0" ]
+	then
+		cat > "$datafilepath"
+	elif [ "$#" = "1" ]
+	then
+		datafilepath=$1
+	fi
+
+	#Verify no more than one file parameter was passed
+	if [ $# -gt 1 ]
+	then
+		echo "Too many parameters specified" >&2
+		exit 1
+	fi
+
+	#Verify the input file exists
+	if [ ! -r $datafilepath ]
+	then
+		echo "File '$1' not found or file not readable" >&2
+		exit 1
+	fi
+
+	#Calculate the number of columns
+	while read inputMatrix
+	do
+
+		#Count the number of columns in the matrix
+		for i in $inputMatrix
+		do
+			column=$(expr $column + 1)
+		done
+	
+		#Update column so it can be a comparison for counter
+		column=$(expr $column + 1)
+
+		while [ $counter -lt $column ]
+		do
+			#Cut the field and save it to tempCol
+			cut -f $counter $datafilepath > $tempCol
+					
+			#Transform the newlines to tabs and save the string to tempRow
+			cat $tempCol | tr '\n' '\t' >> $tempRow
+			echo >> $tempRow
+				
+			counter=$(expr $counter + 1)
+		done
+
+		#Reset the number of columns
+		column=0
+
+	done < $datafilepath
+
+	#Read the row file
+	while read rowMatrix
+	do
+		#Calculate the sum and count of the integers in the row
+		for j in $rowMatrix
+		do
+			sum=$(expr $sum + $j)
+			count=$(expr $count + 1)
+		done
+
+		#Set greater to 1 if sum is greater than 0. greater is 0 otherwise
+		greater=$(($sum > 0))		
+			
+		#Calculate the mean
+		mean=$(expr \( $sum + \( $count / 2 \) \* \( $greater \* 2 - 1 \) \) / $count)
+
+		#Write the mean to tempMean
+		echo "$mean" >> $tempMean
+
+		sum=0
+		count=0
+
+	done < $tempRow
+
+	#Transform the newlines to tabs and save the string to tempRow
+	cat $tempMean | tr '\n' '\t' >> $tempTransform
+				
+	#Add a newline at the end of each line
+	echo >> $tempTransform
+	
+	#Remove the trailing tab and save the new string to tempMean
+	while read inputMatrix
+	do
+		temp=$inputMatrix
+		echo "$temp" > $tempMean
+	done < $tempTransform
+			
+	cat $tempMean
+
+	#Clean up temp files
+	rm -f tempcolfile*
+	rm -f temprowfile*
+	rm -f tempmeanfile*
+	rm -f temptransformfile*
+}
+
+
+#Adds two MxN matrices element-wise to produce a new MxN matrix, which is displayed
+add()
+{
+	dims1=0
+	dims2=0
+	counter=1
+	sum=0
+	tempRow="temprowfile$$"
+	tempAdd="tempaddfile$$"
+	tempTrans="temptransfile$$"
+	tempOut="tempoutfile$$"
+
+	#Set variables datafilepath* to input file names and verify exactly two parameters were passed
+	datafilepath1="datafile1$$"
+	datafilepath2="datafile2$$"
+	if [ "$#" -lt "2" ]
+	then
+		echo "Must specify two parameters" >&2
+		exit 1
+	elif [ "$#" -gt "2" ]
+	then
+		echo "Too many parameters specified" >&2
+		exit 1
+	else
+		datafilepath1=$1
+		datafilepath2=$2
+	fi
+
+	#Verify the input files exists
+	if [ ! -r $datafilepath1 ] && [ ! -r $datafilepath2 ]
+	then
+		echo "Files '$1' and '$2' not found or not readable" >&2
+		exit 1
+	elif [ ! -r $datafilepath1 ]
+	then
+		echo "File '$1' not found or not readable" >&2
+		exit 1
+	elif [ ! -r $datafilepath2 ]
+	then
+		echo "File '$2' not found or not readable" >&2
+		exit 1
+	fi
+
+	#Verify the matrices are of the same dimensions
+	dims1=$(dims $datafilepath1)
+	dims2=$(dims $datafilepath2)
+
+	if [ "$dims1" != "$dims2" ]
+	then
+		echo "The supplied matrices do not have the same dimensions" >&2
+		exit 1
+	fi
+
+	while read line1 <&3 && read line2 <&4
+	do
+		#Echo the current row from datafilepath2 and store it in a temp file
+		echo "$line2" > $tempRow
+
+		for i in $line1
+		do
+			j=$(cut -f $counter $tempRow)
+			sum=$(expr $i + $j)
+
+			#Append sum to tempAdd
+			echo "$sum" >> $tempAdd
+
+			#Increment counter
+			counter=$(expr $counter + 1)
+		done
+
+		#Reset counter
+		counter=1
+
+		#Convert newlines to tabs
+		cat $tempAdd | tr '\n' '\t' >> $tempTrans
+				
+		#Add a newline at the end of the line
+		echo >> $tempTrans
+
+		#Clear the tempAdd file
+		printf "" > $tempAdd
+
+	done 3<$datafilepath1 4<$datafilepath2
+
+
+	#Remove the trailing tab and save the new row to tempOut
+	while read inputMatrix
+	do
+		temp=$inputMatrix
+		echo "$temp" >> $tempOut
+	done < $tempTrans
+
+	#Send tempOut to stdout
+	cat $tempOut
+
+	#Clean up temp files
+	rm -f temprowfile*
+	rm -f tempaddfile*
+	rm -f temptransfile*
+	rm -f tempoutfile*
+}
+
+
+#Calculates the dot product of two supplied matrices, and prints the resulting matrix
+multiply()
+{
+	dims1=0
+	dims2=0
+	sum=0
+	counter=1
+	column=0
+	colCounter=1
+	tempDims1="tempDims1$$"
+	tempDims2="tempDims2$$"
+	tempRow="tempRowFile$$"
+	tempCol="tempColFile$$"
+	tempOut="tempOutFile$$"
+
+	#Set variables datafilepath* to input file names and verify exactly two parameters were passed
+	datafilepath1="datafile1$$"
+	datafilepath2="datafile2$$"
+	if [ "$#" -lt "2" ]
+	then
+		echo "Must specify two parameters" >&2
+		exit 1
+	elif [ "$#" -gt "2" ]
+	then
+		echo "Too many parameters specified" >&2
+		exit 1
+	else
+		datafilepath1=$1
+		datafilepath2=$2
+	fi
+
+	#Verify the input files exists
+	if [ ! -r $datafilepath1 ] && [ ! -r $datafilepath2 ]
+	then
+		echo "Files '$1' and '$2' not found or not readable" >&2
+		exit 1
+	elif [ ! -r $datafilepath1 ]
+	then
+		echo "File '$1' not found or not readable" >&2
+		exit 1
+	elif [ ! -r $datafilepath2 ]
+	then
+		echo "File '$2' not found or not readable" >&2
+		exit 1
+	fi
+
+	#Verify the matrices are of the same dimensions
+	dims1=$(dims $datafilepath1)
+	dims2=$(dims $datafilepath2)
+
+	echo "$dims1" > $tempDims1
+	echo "$dims2" > $tempDims2
+
+	c=$(cut -d' ' -f 2 $tempDims1)
+	r=$(cut -d' ' -f 1 $tempDims2)
+	columns=$(cut -d' ' -f 2 $tempDims2)
+
+	if [ "$c" != "$r" ]
+	then
+		echo "The supplied matrices do not have proper dimensions for multiplication" >&2
+		exit 1
+	fi	
+
+	while read line1
+	do
+
+		while [[ "$colCounter" -le "$columns" ]]
+		do
+			#Cut the column and save it to tempCol
+			cut -f $colCounter $datafilepath2 > $tempCol
+
+			#Convert newlines to tabs
+			cat $tempCol | tr '\n' '\t' > $tempRow
+
+			for i in $line1
+			do
+				j=$(cut -f $counter $tempRow)
+				prod=$(expr $i \* $j)
+
+				#Calculate the sum of the products
+				sum=$(expr $sum + $prod)
+
+				#Increment counter
+				counter=$(expr $counter + 1)
+			done
+
+			#Reset counter
+			counter=1
+
+			#Increment colCounter
+			colCounter=$(expr $colCounter + 1)
+
+			#Write sum to tempOut file
+			printf "%d" "$sum" >> $tempOut
+			if [ "$colCounter" -le "$columns" ]
+			then
+				printf "\t" >> $tempOut
+			fi
+
+			#Reset sum
+			sum=0
+		done
+
+		#Write to the next line
+		printf "\n" >> $tempOut		
+
+		#Reset counters
+		colCounter=1
+
+	done <$datafilepath1
+
+	#Print the product matrix
+	cat $tempOut
+
+	#Clean up temp files
+	rm -f tempDims1*
+	rm -f tempDims2*
+	rm -f tempRowFile*
+	rm -f tempColFile*
+	rm -f tempOutFile*
+}
+
+
+
+#main
+
+#Verify the called function exists
+if declare -f "$1" > /dev/null
+then	
+	#Call the function specified, passing remaining parameters
+	$1 "${@:2}"
+else
+	echo "'$1' is an unknown command" >&2
+	exit 1
+fi
+
+#Remove temp files
+rm -f datafile*
